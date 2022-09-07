@@ -24,7 +24,11 @@ export type MitosisConfig = {
    */
   dest?: string;
   /**
-   * globs of files to transpile. Defaults to `src/*`.
+   * Base directory. Defaults to `src`.
+   */
+  baseDir?: string;
+  /**
+   * globs of files to transpile. Defaults to `./*`.
    */
   files?: string | string[];
   /**

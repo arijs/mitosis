@@ -22,6 +22,7 @@ import {
 import debug from 'debug';
 import glob from 'fast-glob';
 import { flow, pipe } from 'fp-ts/lib/function';
+import { join as pathJoin } from 'path';
 import { outputFile, pathExists, readFile, remove } from 'fs-extra';
 import { kebabCase } from 'lodash';
 import micromatch from 'micromatch';
@@ -36,7 +37,8 @@ const cwd = process.cwd();
 const DEFAULT_CONFIG: Partial<MitosisConfig> = {
   targets: [],
   dest: 'output',
-  files: 'src/*',
+  baseDir: 'src',
+  files: '**/*.lite.tsx',
   overridesDir: 'overrides',
 };
 
@@ -59,12 +61,14 @@ async function clean(options: MitosisConfig) {
 }
 
 const getMitosisComponentJSONs = async (options: MitosisConfig) => {
+  const files = await glob(Array.from(options.files).map(path => pathJoin(options.baseDir, path)), { cwd })
   return Promise.all(
-    micromatch(await glob(options.files, { cwd }), `**/*.${options.extension ?? 'lite.tsx'}`).map(
+    micromatch(files, `**/*.${options.extension ?? 'lite.tsx'}`).map(
       async (path) => {
         try {
+          const { parser = parseJsx } = options;
           const file = await readFile(path, 'utf8');
-          const parsed = await (options.parser ? options.parser(file) : parseJsx(file));
+          const parsed = await parser(file);
           return {
             path,
             mitosisJson: parsed,

@@ -3,6 +3,7 @@ import {
   compileAwayBuilderComponents,
   GeneratorOptions,
   MitosisComponent,
+  MitosisConfig,
   parseJsx,
   Target,
   targets,
@@ -18,17 +19,29 @@ type AllGeneratorOption = UnionToIntersection<GeneratorOpts>;
 // The only purpose this really serves is to ensure I provide a flag API
 // for ever generator's option.
 type AllGeneratorOptionKeys = keyof AllGeneratorOption;
+type Toolbox = Parameters<GluegunCommand['run']>[0];
 
 const command: GluegunCommand = {
   name: 'compile',
   alias: 'c',
   run: async (toolbox) => {
-    const { parameters, strings, filesystem, print } = toolbox;
-    const opts = parameters.options;
+    const opts = toolbox.parameters.options;
 
     if (opts.l ?? opts.list ?? false) {
       return listTargets();
     }
+
+    const mc = getMitosisConfig();
+    const mcList = mc instanceof Array ? mc : [mc];
+    Promise.all(mcList.map((mc) => runCompile(toolbox, mc)));
+  },
+};
+
+module.exports = command;
+
+  async function runCompile(toolbox: Toolbox, mitosisConfig: MitosisConfig) {
+    const { parameters, strings, filesystem, print } = toolbox;
+    const opts = parameters.options;
 
     // Flags and aliases
     const from_ = strings.camelCase(opts.f ?? opts.from ?? 'mitosis');
@@ -46,12 +59,11 @@ const command: GluegunCommand = {
       plugins.push(compileAwayBuilderComponents());
     }
 
-    const mitosisConfig = getMitosisConfig();
     const generatorOptions = mitosisConfig?.options?.[to];
 
     const generatorOpts: Partial<{ [K in AllGeneratorOptionKeys]: any }> = {
       ...generatorOptions,
-      prettier: opts.prettier ?? true,
+      prettier: opts.noPrettier ? false : opts.prettier ?? true,
       plugins: [...plugins, ...(generatorOptions?.plugins || [])],
       format: opts.format,
       prefix: opts.prefix,
@@ -160,10 +172,7 @@ const command: GluegunCommand = {
         filesystem.write(out, output);
       }
     }
-  },
-};
-
-module.exports = command;
+  }
 
 /**
  * List all targets (args to --to). This could be moved to it's own command at

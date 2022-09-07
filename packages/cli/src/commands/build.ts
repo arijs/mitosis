@@ -6,7 +6,9 @@ const command: GluegunCommand = {
   name: 'build',
   alias: 'b',
   run: async (toolbox) => {
-    await build(getMitosisConfig());
+    const mc = getMitosisConfig();
+    const mcList = mc instanceof Array ? mc : mc ? [mc] : [];
+    return await Promise.all(mcList.map((config) => build(config)));
   },
 };
 
